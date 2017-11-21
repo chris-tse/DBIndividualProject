@@ -1,3 +1,5 @@
+import oracle.jdbc.proxy.annotation.Pre;
+
 import java.sql.*;
 import java.util.Scanner;
 import java.util.SortedMap;
@@ -42,19 +44,19 @@ public class Main {
                     insertEmployee(dbc);
                     break;
                 case 6:
-                    //insertExpense(dbc);
+                    recordExpense(dbc);
                     break;
                 case 7:
-//                    insertSponsor(dbc);
+                    insertSponsor(dbc);
                     break;
                 case 8:
-//                    insertDonor(dbc);
+                    insertDonor(dbc);
                     break;
                 case 9:
 //                    insertDonorOrg(dbc);
                     break;
                 case 10:
-//                    getClientNamePhone(dbc);
+                    getClientDoctor(dbc);
                     break;
                 case 11:
 //                    getExpenses(dbc);
@@ -97,10 +99,7 @@ public class Main {
 
     public static boolean insertPerson(Connection dbc, Scanner scanner, String SSN) {
         String insertPerson = "INSERT INTO PERSON VALUES (?, ?, to_date(?, 'YYYY/MM/DD'), ?, ?, ?)";
-        if(checkSSN(dbc, SSN)) {
-            System.out.println("Skipping insertion into Person");
-            return true;
-        }
+
         System.out.print("Please enter the name: ");
         String name = scanner.nextLine();
         System.out.print("Please enter the birth date (YYYY/MM/DD): ");
@@ -160,9 +159,9 @@ public class Main {
         }
     }
 
-    public static boolean checkSSN(Connection dbc, String SSN) {
+    public static boolean checkSSN(Connection dbc, String SSN, String table) {
         PreparedStatement stmt;
-        String checkSSN = "SELECT COUNT(*) AS C FROM PERSON WHERE SSN = ?";
+        String checkSSN = "SELECT COUNT(*) AS C FROM " + table + " WHERE SSN = ?";
         ResultSet res;
         try {
             stmt = dbc.prepareStatement(checkSSN);
@@ -170,7 +169,7 @@ public class Main {
             res = stmt.executeQuery();
             res.next();
             if (res.getInt("C") > 0) {
-                System.out.println("SSN exists in Person.");
+                System.out.println("SSN exists in " + table +  ".");
                 return true;
             } else {
                 return false;
@@ -200,6 +199,7 @@ public class Main {
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
         }
+        scanner.close();
     }
 
     public static void insertClient(Connection dbc) {
@@ -207,13 +207,11 @@ public class Main {
         PreparedStatement stmt;
         System.out.print("Please enter the SSN: ");
         String SSN = scanner.nextLine();
-        if(checkSSN(dbc, SSN)) {
-            System.out.println("Skipping insertion into Client");
-            System.out.println("Returning to menu. Press enter to continue...");
-            scanner.nextLine();
-            return;
+        if(checkSSN(dbc, SSN, "PERSON")) {
+            System.out.println("Skipping insertion into Person");
+        } else {
+            insertPerson(dbc, scanner, SSN);
         }
-        if(!insertPerson(dbc, scanner, SSN)) return;
 
         String insertClient = "INSERT INTO CLIENT VALUES " +
                 "(?, ?, ?, ?, sysdate)";
@@ -255,6 +253,7 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
+        scanner.close();
     }
 
     public static void insertVolunteer(Connection dbc) {
@@ -262,71 +261,28 @@ public class Main {
         PreparedStatement stmt;
         System.out.print("Please enter the SSN of the volunteer: ");
         String SSN = scanner.nextLine();
-        if(checkSSN(dbc, SSN)) {
-            System.out.println("Skipping insertion into Volunteer");
-            System.out.println("Returning to menu. Press enter to continue..");
-            scanner.nextLine();
-            return;
-        }
-        if(!insertPerson(dbc, scanner, SSN)) return;
 
-        String insertVolunteer = "INSERT INTO Volunteer VALUES ('?', '?', to_date('?', 'YYYY/MM/DD'), '?', '?', '?', sysdate, '?')";
-        System.out.print("Please enter the name of the volunteer: ");
-        String name = scanner.nextLine();
-        System.out.print("Please enter the birth date of the volunteer (YYYY/MM/DD): ");
-        String bdate = scanner.nextLine();
-        System.out.print("Please enter the race of the volunteer: ");
-        String race = scanner.nextLine();
-        System.out.print("Please enter the profession of the volunteer: ");
-        String profession = scanner.nextLine();
-        System.out.print("Please enter the gender of the volunteer (M/F): ");
-        String gender = scanner.nextLine();
+        if(checkSSN(dbc, SSN, "PERSON")) {
+            System.out.println("Skipping insertion into Person");
+        } else {
+            insertPerson(dbc, scanner, SSN);
+        }
+
+        String insertVolunteer = "INSERT INTO Volunteer VALUES (?, sysdate, ?)";
         System.out.print("Please enter the location of the volunteer's most recent training: ");
         String trainloc = scanner.nextLine();
         try {
             stmt = dbc.prepareStatement(insertVolunteer);
             stmt.setString(1, SSN);
-            stmt.setString(2, name);
-            stmt.setString(3, bdate);
-            stmt.setString(4, race);
-            stmt.setString(5, profession);
-            stmt.setString(6, gender);
-            stmt.setString(7, trainloc);
-        } catch (SQLException e) {
-            fail(scanner, e.getMessage());
-            return;
-        }
-
-        String insertVolunteerContact = "INSERT INTO CONTACTINFO VALUES " +
-                "(?, ?, ?, ?, ?, ?, ?)";
-        System.out.print("Please enter the volunteer's mailing address: ");
-        String mail = scanner.nextLine();
-        System.out.print("Please enter the volunteer's email address: ");
-        String email = scanner.nextLine();
-        System.out.print("Please enter the volunteer's home number: ");
-        String homephone = scanner.nextLine();
-        System.out.print("Please enter the volunteer's work number: ");
-        String workphone = scanner.nextLine();
-        System.out.print("Please enter the volunteer's cell number: ");
-        String cellphone = scanner.nextLine();
-        System.out.print("Add volunteer to mailing list? (Y/N) ");
-        String maillist = scanner.nextLine();
-        try {
-            stmt = dbc.prepareStatement(insertVolunteerContact);
-            stmt.setString(1, SSN);
-            stmt.setString(2, mail);
-            stmt.setString(3, email);
-            stmt.setString(4, homephone);
-            stmt.setString(5, workphone);
-            stmt.setString(6, cellphone);
-            stmt.setString(7, maillist);
+            stmt.setString(2, trainloc);
             stmt.executeUpdate();
+            System.out.println("Inserted into Volunteer");
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
             return;
         }
 
-        String insertServesOn = "INSERT INTO SERVESON VALUES ('?', '?', 'T')";
+        String insertServesOn = "INSERT INTO SERVESON VALUES (?, ?, 'T')";
         System.out.print("Please enter the list of teams this volunteer will serve (Team1,Team2,...): ");
         String teams = scanner.nextLine();
         String[] teamArr = teams.split(",");
@@ -337,10 +293,14 @@ public class Main {
                 stmt.setString(2, team);
                 stmt.executeUpdate();
             }
+            System.out.println("Inserted into ServesOn");
+            System.out.println("Volunteer insertion complete. Press enter to continue...");
+            scanner.nextLine();
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
             return;
         }
+        scanner.close();
     }
 
     public static void recordVolunteerHours(Connection dbc) {
@@ -354,70 +314,312 @@ public class Main {
         String team = scanner.nextLine();
         System.out.print("Enter the number of hours worked: ");
         float hours = scanner.nextFloat();
+        scanner.nextLine();
         try {
             stmt = dbc.prepareStatement(insertHours);
             stmt.setString(1, SSN);
             stmt.setString(2, team);
             stmt.setFloat(3, hours);
-            stmt.executeQuery();
+            stmt.executeUpdate();
             System.out.println("Record successful");
+            System.out.println("Returning to menu. Press enter to continue...");
+            scanner.nextLine();
         } catch (SQLException e){
-            System.err.println("Could not insert into VolunteerHours");
-            e.printStackTrace();
+            fail(scanner, e.getMessage());
             return;
         }
+        scanner.close();
     }
 
     public static void insertEmployee(Connection dbc) {
         Scanner scanner = new Scanner(System.in);
-        System.out.print("Enter the SSN of the employee: ");
-        String SSN = scanner.nextLine();
-        System.out.print("Enter the name of the employee: ");
-        String name = scanner.nextLine();
-        System.out.print("Enter the birth date of the employee (YYYY/MM/DD): ");
-        String bdate = scanner.nextLine();
-        System.out.print("Enter the race of the employee: ");
-        String race = scanner.nextLine();
-        System.out.print("Enter the profession of the employee: ");
-        String profession = scanner.nextLine();
-        System.out.print("Enter the gender of the employee: ");
-        String gender = scanner.nextLine();
-        System.out.print("Enter the sylart of the employee: ");
-        float salary = scanner.nextFloat();
-        System.out.print("Enter the marital status of the employee: ");
-        String marital = scanner.nextLine();
-        System.out.println("Enter the list of teams that will be reporting to this employee (Team1, Team2): ");
-        String teams = scanner.nextLine();
-
-        String[] teamArr = teams.split(",");
         PreparedStatement stmt;
+        System.out.print("Please enter the SSN of the employee: ");
+        String SSN = scanner.nextLine();
+
+        if(checkSSN(dbc, SSN, "PERSON")) {
+            System.out.println("Skipping insertion into Person");
+        } else {
+            insertPerson(dbc, scanner, SSN);
+        }
+
+        String insertEmployee = "INSERT INTO Employee VALUES (?, ?, ?, sysdate)";
+        System.out.print("Please enter the employee's salary: ");
+        float salary = scanner.nextFloat();
+        scanner.nextLine();
+        System.out.print("Please enter the employee's marital status: ");
+        String mstatus = scanner.nextLine();
         try {
-            stmt = dbc.prepareStatement("INSERT INTO Employee VALUES ('?', '?', to_date('?', 'YYYY/MM/DD'), '?', '?', 'M', 80000.00, 'Married', )");
+            stmt = dbc.prepareStatement(insertEmployee);
             stmt.setString(1, SSN);
-            stmt.setString(2, name);
-            stmt.setString(3, bdate);
-            stmt.setString(4, race);
-            stmt.setString(5, profession);
-            stmt.setString(6, gender);
-            stmt.setFloat(7, salary);
-            stmt.setString(8, marital);
-            stmt.executeQuery();
-            System.out.println("Insertion into Employee successful");
+            stmt.setFloat(2, salary);
+            stmt.setString(3, mstatus);
+            stmt.executeUpdate();
+            System.out.println("Inserted into Employee");
         } catch (SQLException e) {
-            System.err.println("Could not insert into Employee");
+            fail(scanner, e.getMessage());
             return;
         }
 
+        String insertReportsTo = "INSERT INTO REPORTSTO VALUES (?, ?)";
+        System.out.print("Please enter the list of teams this volunteer will serve (Team1,Team2,...): ");
+        String teams = scanner.nextLine();
+        String[] teamArr = teams.split(",");
         try {
             for (String team : teamArr) {
-                stmt = dbc.prepareStatement("INSERT INTO ReportsTo VALUES ('?', '?');");
+                stmt = dbc.prepareStatement(insertReportsTo);
                 stmt.setString(1, team);
                 stmt.setString(2, SSN);
-                stmt.executeQuery();
-                System.out.println("Insertion into ReportsTo successful");
+                stmt.executeUpdate();
             }
+            System.out.println("Inserted into ReportsTo");
+            System.out.println("Employee insertion complete. Press enter to continue...");
+            scanner.nextLine();
         } catch (SQLException e) {
-            System.err.println("Could not insert into ReportsTo");
+            fail(scanner, e.getMessage());
+            return;
+        }
+        scanner.close();
+    }
+
+    public static void recordExpense(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+
+        String insertExpense = "INSERT INTO EMPLOYEEEXPENSE VALUES (?, ?, ?, to_date(?, 'YYYY/MM/DD'))";
+        System.out.print("Enter the SSN of the employee recording the expense: ");
+        String SSN = scanner.nextLine();
+        System.out.print("Enter the expense amount: ");
+        float amount = scanner.nextFloat();
+        scanner.nextLine();
+        System.out.print("Enter the expense description: ");
+        String desc = scanner.nextLine();
+        System.out.print("Enter the date of the expense: ");
+        String date = scanner.nextLine();
+
+        try {
+            stmt = dbc.prepareStatement(insertExpense);
+            stmt.setString(1, SSN);
+            stmt.setFloat(2, amount);
+            stmt.setString(3, desc);
+            stmt.setString(4, date);
+            stmt.executeUpdate();
+            System.out.println("Record successful");
+            System.out.println("Returning to menu. Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+        scanner.close();
+    }
+
+    public static void insertSponsor(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+
+        String insertOrg = "INSERT INTO ORG VALUES (?, ?, ?, ?, ?)";
+        String insertChurch = "INSERT INTO CHURCH VALUES (?, ?)";
+        String insertBusiness = "INSERT INTO BUSINESS VALUES (?, ?, ?, ?)";
+        System.out.print("Enter the name of the organization: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter the address of the organization: ");
+        String addr = scanner.nextLine();
+        System.out.print("Enter the phone of the organization: ");
+        String phone = scanner.nextLine();
+        System.out.print("Enter the name of the contact person of the organization: ");
+        String contact = scanner.nextLine();
+        System.out.print("Does this organization wish to be anonymous? (T/F): ");
+        String anon = scanner.nextLine();
+        System.out.print("Is this organization a [C]hurch, [B]usiness, or [N]either? (C/B/N): ");
+        String type = scanner.nextLine();
+        try {
+            stmt = dbc.prepareStatement(insertOrg);
+            stmt.setString(1, name);
+            stmt.setString(2, addr);
+            stmt.setString(3, phone);
+            stmt.setString(4, contact);
+            stmt.setString(5, anon);
+            stmt.executeUpdate();
+            System.out.println("Inserted into Org");
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+
+        if (type.equals("C")) {
+            System.out.print("Enter the affiliation of the church: ");
+            String affil = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertChurch);
+                stmt.setString(1, name);
+                stmt.setString(2, affil);
+                stmt.executeUpdate();
+                System.out.println("Inserted into Church");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+        }
+
+        if (type.equals("B")) {
+            System.out.print("Enter the type of business: ");
+            String btype = scanner.nextLine();
+            System.out.print("Enter the number of employees at this company: ");
+            int bsize = scanner.nextInt();
+            scanner.nextLine();
+            System.out.print("Enter the website of the business: ");
+            String site = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertBusiness);
+                stmt.setString(1, name);
+                stmt.setString(2, btype);
+                stmt.setInt(3, bsize);
+                stmt.setString(4, site);
+                stmt.executeUpdate();
+                System.out.println("Inserted into Business");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+        }
+
+        String orgTeam = "INSERT INTO SPONSORS VALUES (?, ?)";
+        System.out.print("Please enter the list of teams this organization sponsors (Team1,Team2,...): ");
+        String teams = scanner.nextLine();
+        String[] teamArr = teams.split(",");
+        try {
+            for (String team : teamArr) {
+                stmt = dbc.prepareStatement(orgTeam);
+                stmt.setString(1, name);
+                stmt.setString(2, team);
+                stmt.executeUpdate();
+            }
+            System.out.println("Inserted into Sponsors");
+            System.out.println("Org insertion complete. Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+        scanner.close();
+    }
+
+    public static void insertDonor(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        System.out.print("Please enter the SSN of the donor: ");
+        String SSN = scanner.nextLine();
+
+        if(checkSSN(dbc, SSN, "PERSON")) {
+            System.out.println("Skipping insertion into Person");
+        } else {
+            insertPerson(dbc, scanner, SSN);
+        }
+
+        String insertDonor = "INSERT INTO DONOR VALUES (?, ?)";
+        System.out.print("Enter whether the donor would like to be anonymous (T/F): ");
+        String anon = scanner.nextLine();
+        try {
+            stmt = dbc.prepareStatement(insertDonor);
+            stmt.setString(1, SSN);
+            stmt.setString(2, anon);
+            stmt.executeUpdate();
+            System.out.println("Inserted into Donor");
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+        System.out.print("How many donations to insert for " + SSN + "?");
+        int n = scanner.nextInt();
+        scanner.nextLine();
+
+        String insertDonation = "INSERT INTO DONORDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?)";
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter the date of the donation (YYYY/MM/DD): ");
+            String ddate = scanner.nextLine();
+            System.out.print("Enter the amount of the donation: ");
+            float amount = scanner.nextFloat();
+            scanner.nextLine();
+            System.out.print("Enter the campaign of the donation: ");
+            String camp = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertDonation);
+                stmt.setString(1, SSN);
+                stmt.setString(2, ddate);
+                stmt.setFloat(3, amount);
+                stmt.setString(4, camp);
+                stmt.executeUpdate();
+                System.out.println("Inserted to DonorDonation");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+            System.out.print("Enter whether it was by check or card (check/card): ");
+            String dtype = scanner.nextLine();
+            String insertDonorCheck = "INSERT INTO DONORCHECKDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?)";
+            String insertDonorCard = "INSERT INTO DONORCARDDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?, to_date(?, 'YYYY/MM/DD'))";
+            if (dtype.equals("check")) {
+                System.out.print("Enter the check number: ");
+                String check_num = scanner.nextLine();
+                try {
+                    stmt = dbc.prepareStatement(insertDonorCheck);
+                    stmt.setString(1, SSN);
+                    stmt.setString(2, ddate);
+                    stmt.setString(3, check_num);
+                    stmt.executeUpdate();
+                    System.out.println("Inserted to DonorCheckDonation");
+                } catch (SQLException e) {
+                    fail(scanner, e.getMessage());
+                    return;
+                }
+            }
+            if (dtype.equals("card")) {
+                System.out.print("Enter the card number: ");
+                String card_num = scanner.nextLine();
+                System.out.print("Enter the card type: ");
+                String card_type = scanner.nextLine();
+                System.out.print("Enter the card expiry date: ");
+                String card_exp = scanner.nextLine();
+                try {
+                    stmt = dbc.prepareStatement(insertDonorCard);
+                    stmt.setString(1, SSN);
+                    stmt.setString(2, ddate);
+                    stmt.setString(3, card_num);
+                    stmt.setString(4, card_type);
+                    stmt.setString(5, card_exp);
+                    stmt.executeUpdate();
+                    System.out.println("Inserted to DonorCardDonation");
+                } catch (SQLException e) {
+                    fail(scanner, e.getMessage());
+                    return;
+                }
+            }
+
+        }
+        System.out.println("Donor and donation insertions complete. Press enter to continue...");
+        scanner.nextLine();
+        scanner.close();
+    }
+
+    public static void getClientDoctor(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        System.out.print("Enter the SSN of the client whose doctor to be retrieved: ");
+        String SSN = scanner.nextLine();
+        String query = "SELECT DOCTOR_NAME, DOCTOR_PHONE FROM CLIENT WHERE SSN = ?";
+        try {
+            stmt = dbc.prepareStatement(query);
+            stmt.setString(1, SSN);
+            ResultSet res = stmt.executeQuery();
+            res.next();
+            System.out.format("|%-20s|%-20s| %n", "Doctor Name", "Doctor Phone");
+            System.out.println("-------------------------------------------");
+            System.out.format("|%-20s|%-20s| %n", res.getString("DOCTOR_NAME"), res.getString("DOCTOR_PHONE"));
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
             return;
         }
     }
