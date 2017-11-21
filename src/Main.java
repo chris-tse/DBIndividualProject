@@ -1,5 +1,6 @@
 import oracle.jdbc.proxy.annotation.Pre;
 
+import javax.xml.transform.Result;
 import java.sql.*;
 import java.util.Scanner;
 import java.util.SortedMap;
@@ -59,7 +60,7 @@ public class Main {
                     getClientDoctor(dbc);
                     break;
                 case 11:
-//                    getExpenses(dbc);
+                    getExpenses(dbc);
                     break;
                 case 12:
 //                    getSupportVolunteers(dbc);
@@ -752,6 +753,45 @@ public class Main {
             System.out.format("|%-20s|%-20s| %n", "Doctor Name", "Doctor Phone");
             System.out.println("-------------------------------------------");
             System.out.format("|%-20s|%-20s| %n", res.getString("DOCTOR_NAME"), res.getString("DOCTOR_PHONE"));
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void getExpenses(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+
+        String query =
+                "SELECT " +
+                "   SSN, " +
+                "   SUM(amount) as EXP " +
+                "FROM EMPLOYEEEXPENSE " +
+                "WHERE EDATE >= to_date(?, 'YYYY/MM/DD') AND EDATE <= to_date(?, 'YYYY/MM/DD') " +
+                "GROUP BY SSN " +
+                "ORDER BY EXP DESC";
+
+        System.out.print("Enter the beginning of the date range (YYYY/MM/DD): ");
+        String start = scanner.nextLine();
+        System.out.print("Enter the end of the date range (YYYY/MM/DD): ");
+        String end = scanner.nextLine();
+        try {
+            stmt = dbc.prepareStatement(query);
+            stmt.setString(1, start);
+            stmt.setString(2, end);
+            ResultSet res = stmt.executeQuery();
+            System.out.println("---------------------------------------");
+            System.out.format("| %-20s| %-16s| %n", "Employee SSN", "Total Expense");
+            System.out.println("---------------------------------------");
+            while(res.next()) {
+                String SSN = res.getString("SSN");
+                float exp = res.getFloat("EXP");
+                System.out.format("| %-20s| %-16f| %n", SSN, exp);
+            }
+            System.out.println("---------------------------------------");
             System.out.println("Press enter to continue...");
             scanner.nextLine();
         } catch (SQLException e) {
