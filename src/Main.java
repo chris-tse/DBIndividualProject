@@ -1,5 +1,6 @@
 import java.sql.*;
 import java.util.Scanner;
+import java.util.SortedMap;
 
 public class Main {
     public static void main(String[] args) {
@@ -96,7 +97,10 @@ public class Main {
 
     public static boolean insertPerson(Connection dbc, Scanner scanner, String SSN) {
         String insertPerson = "INSERT INTO PERSON VALUES (?, ?, to_date(?, 'YYYY/MM/DD'), ?, ?, ?)";
-
+        if(checkSSN(dbc, SSN)) {
+            System.out.println("Skipping insertion into Person");
+            return true;
+        }
         System.out.print("Please enter the name: ");
         String name = scanner.nextLine();
         System.out.print("Please enter the birth date (YYYY/MM/DD): ");
@@ -107,10 +111,7 @@ public class Main {
         String profession = scanner.nextLine();
         System.out.print("Please enter the gender (M/F): ");
         String gender = scanner.nextLine();
-        if(checkSSN(dbc, SSN)) {
-            System.out.println("Skipping insertion into Person");
-            return true;
-        }
+
         PreparedStatement stmt;
         try {
             stmt = dbc.prepareStatement(insertPerson);
@@ -122,6 +123,36 @@ public class Main {
             stmt.setString(6, gender);
             stmt.executeUpdate();
             System.out.println("Inserted into Person");
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return false;
+        }
+
+        String insertClientContact = "INSERT INTO CONTACTINFO VALUES " +
+                "(?, ?, ?, ?, ?, ?, ?)";
+        System.out.print("Please enter the client's mailing address: ");
+        String mail = scanner.nextLine();
+        System.out.print("Please enter the client's email address: ");
+        String email = scanner.nextLine();
+        System.out.print("Please enter the client's home number: ");
+        String homephone = scanner.nextLine();
+        System.out.print("Please enter the client's work number: ");
+        String workphone = scanner.nextLine();
+        System.out.print("Please enter the client's cell number: ");
+        String cellphone = scanner.nextLine();
+        System.out.print("Add client to mailing list? (Y/N) ");
+        String maillist = scanner.nextLine();
+        try {
+            stmt = dbc.prepareStatement(insertClientContact);
+            stmt.setString(1, SSN);
+            stmt.setString(2, mail);
+            stmt.setString(3, email);
+            stmt.setString(4, homephone);
+            stmt.setString(5, workphone);
+            stmt.setString(6, cellphone);
+            stmt.setString(7, maillist);
+            stmt.executeUpdate();
+            System.out.println("Inserted to ContactInfo");
             return true;
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
@@ -176,6 +207,12 @@ public class Main {
         PreparedStatement stmt;
         System.out.print("Please enter the SSN: ");
         String SSN = scanner.nextLine();
+        if(checkSSN(dbc, SSN)) {
+            System.out.println("Skipping insertion into Client");
+            System.out.println("Returning to menu. Press enter to continue...");
+            scanner.nextLine();
+            return;
+        }
         if(!insertPerson(dbc, scanner, SSN)) return;
 
         String insertClient = "INSERT INTO CLIENT VALUES " +
@@ -193,37 +230,7 @@ public class Main {
             stmt.setString(3, drphone);
             stmt.setString(4, attphone);
             stmt.executeUpdate();
-            System.out.println("Client insertion successful. Press enter to continue...");
-            scanner.nextLine();
-        } catch (SQLException e) {
-            fail(scanner, e.getMessage());
-            return;
-        }
-
-        String insertClientContact = "INSERT INTO CONTACTINFO VALUES " +
-                "(?, ?, ?, ?, ?, ?, ?)";
-        System.out.print("Please enter the client's mailing address: ");
-        String mail = scanner.nextLine();
-        System.out.print("Please enter the client's email address: ");
-        String email = scanner.nextLine();
-        System.out.print("Please enter the client's home number: ");
-        String homephone = scanner.nextLine();
-        System.out.print("Please enter the client's work number: ");
-        String workphone = scanner.nextLine();
-        System.out.print("Please enter the client's cell number: ");
-        String cellphone = scanner.nextLine();
-        System.out.print("Add client to mailing list? (Y/N) ");
-        String maillist = scanner.nextLine();
-        try {
-            stmt = dbc.prepareStatement(insertClientContact);
-            stmt.setString(1, SSN);
-            stmt.setString(2, mail);
-            stmt.setString(3, email);
-            stmt.setString(4, homephone);
-            stmt.setString(5, workphone);
-            stmt.setString(6, cellphone);
-            stmt.setString(7, maillist);
-            stmt.executeUpdate();
+            System.out.println("Inserted into Client");
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
             return;
@@ -241,6 +248,9 @@ public class Main {
                 stmt.setString(2, team);
                 stmt.executeUpdate();
             }
+            System.out.println("Inserted to CaresFor");
+            System.out.println("Client insertion complete. Press enter to continue...");
+            scanner.nextLine();
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
             return;
@@ -252,8 +262,13 @@ public class Main {
         PreparedStatement stmt;
         System.out.print("Please enter the SSN of the volunteer: ");
         String SSN = scanner.nextLine();
-
-        if(!insertPerson(dbc, scanner, SSN))  return;
+        if(checkSSN(dbc, SSN)) {
+            System.out.println("Skipping insertion into Volunteer");
+            System.out.println("Returning to menu. Press enter to continue..");
+            scanner.nextLine();
+            return;
+        }
+        if(!insertPerson(dbc, scanner, SSN)) return;
 
         String insertVolunteer = "INSERT INTO Volunteer VALUES ('?', '?', to_date('?', 'YYYY/MM/DD'), '?', '?', '?', sysdate, '?')";
         System.out.print("Please enter the name of the volunteer: ");
