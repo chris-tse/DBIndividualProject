@@ -1,6 +1,10 @@
 import oracle.jdbc.proxy.annotation.Pre;
 
 import javax.xml.transform.Result;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.sql.*;
 import java.util.Scanner;
 import java.util.SortedMap;
@@ -15,6 +19,7 @@ public class Main {
         try {
             System.out.println("Connecting to database...");
             Connection dbConnection = DriverManager.getConnection(dbURL, login, pw);
+            System.out.println("WELCOME TO THE PAN CLIENT AND DONOR DATABASE SYSTEM");
             run(dbConnection);
         } catch (SQLException x) {
             x.printStackTrace();
@@ -63,29 +68,32 @@ public class Main {
                     getExpenses(dbc);
                     break;
                 case 12:
-//                    getSupportVolunteers(dbc);
+                    getSupportVolunteers(dbc);
                     break;
                 case 13:
-//                    getBtoK(dbc);
+                    getBtoK(dbc);
                     break;
                 case 14:
-//                    getDonorEmployees(dbc);
+                    getDonorEmployees(dbc);
                     break;
                 case 15:
-//                    getMostHourVolunteer(dbc);
+                    getMostHourVolunteer(dbc);
                     break;
                 case 16:
-//                    increaseSalary(dbc);
+                    increaseSalary(dbc);
                     break;
                 case 17:
-//                    deleteSomeClients(dbc);
+                    deleteSomeClients(dbc);
                     break;
                 case 18:
-//                    importTeams(dbc);
+                    importTeams(dbc);
                     break;
                 case 19:
 //                    exportMailingList(dbc);
                     break;
+                case 20:
+                    System.out.println();
+                    return;
                 default:
                     System.out.println("Unknown command; please try again.");
             }
@@ -783,15 +791,15 @@ public class Main {
             stmt.setString(1, start);
             stmt.setString(2, end);
             ResultSet res = stmt.executeQuery();
-            System.out.println("---------------------------------------");
+            System.out.println("-----------------------------------------");
             System.out.format("| %-20s| %-16s| %n", "Employee SSN", "Total Expense");
-            System.out.println("---------------------------------------");
+            System.out.println("-----------------------------------------");
             while(res.next()) {
                 String SSN = res.getString("SSN");
                 float exp = res.getFloat("EXP");
                 System.out.format("| %-20s| %-16f| %n", SSN, exp);
             }
-            System.out.println("---------------------------------------");
+            System.out.println("-----------------------------------------");
             System.out.println("Press enter to continue...");
             scanner.nextLine();
         } catch (SQLException e) {
@@ -800,8 +808,312 @@ public class Main {
         }
     }
 
+    public static void getSupportVolunteers(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        System.out.print("Enter the SSN of the client for which to retrieve supporting volunteers: ");
+        String SSN = scanner.nextLine();
+        String query =
+                "SELECT SSN " +
+                "FROM SERVESON " +
+                "WHERE NAME IN ( " +
+                "   SELECT NAME " +
+                "   FROM CARESFOR " +
+                "   WHERE SSN = ?)";
+        try {
+            stmt = dbc.prepareStatement(query);
+            stmt.setString(1, SSN);
+            ResultSet res = stmt.executeQuery();
+            System.out.println("------------------");
+            System.out.format("| %-15s| %n", "Volunteer SSN");
+            System.out.println("------------------");
+            while(res.next()) {
+                System.out.format("| %-15s| %n", res.getString("SSN"));
+            }
+            System.out.println("------------------");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void getBtoK(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        String query =
+                "SELECT " +
+                "  q1.NAME, " +
+                "  q2.MAILING_ADDR, " +
+                "  q2.EMAIL_ADDR, " +
+                "  q2.HOME_NUM, " +
+                "  q2.WORK_NUM, " +
+                "  q2.CELL_NUM " +
+                "FROM ( " +
+                "       SELECT " +
+                "         SSN, " +
+                "         NAME " +
+                "       FROM PERSON " +
+                "       WHERE SSN IN (" +
+                "         SELECT SSN" +
+                "         FROM CARESFOR" +
+                "         WHERE NAME IN (" +
+                "           SELECT TNAME" +
+                "           FROM SPONSORS" +
+                "           WHERE ONAME BETWEEN 'B' AND 'L'))) q1 " +
+                "  INNER JOIN " +
+                "  (SELECT " +
+                "     SSN, " +
+                "     MAILING_ADDR, " +
+                "     EMAIL_ADDR, " +
+                "     HOME_NUM, " +
+                "     WORK_NUM, " +
+                "     CELL_NUM"  +
+                "   FROM CONTACTINFO" +
+                "   WHERE SSN IN (" +
+                "     SELECT SSN" +
+                "     FROM CARESFOR" +
+                "     WHERE NAME IN (" +
+                "       SELECT TNAME" +
+                "       FROM SPONSORS" +
+                "       WHERE ONAME BETWEEN 'B' AND 'L'))) q2 " +
+                "    ON q1.SSN = q2.SSN " +
+                "ORDER BY q1.NAME ASC";
+        try {
+            stmt = dbc.prepareStatement(query);
+            ResultSet res = stmt.executeQuery();
+            while (res.next()) {
+                String name = res.getString("NAME");
+                String mail = res.getString("MAILING_ADDR");
+                String email = res.getString("EMAIL_ADDR");
+                String home = res.getString("HOME_NUM");
+                String work = res.getString("WORK_NUM");
+                String cell = res.getString("CELL_NUM");
+                System.out.println("Name: " + name);
+                System.out.println("Mailing address: " + mail);
+                System.out.println("Email address: " + email);
+                System.out.println("Home: " + home);
+                System.out.println("Work: " + work);
+                System.out.println("Cell: " + cell);
+                System.out.println();
+            }
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void getDonorEmployees(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        String query =
+                "SELECT " +
+                "  q2.NAME," +
+                "  q1.A," +
+                "  q1.ANONYMOUS " +
+                "FROM " +
+                "  (SELECT " +
+                "     DONOR.SSN," +
+                "     SUM(AMOUNT) AS A, " +
+                "     DONOR.ANONYMOUS " +
+                "   FROM DONOR, DONORDONATION" +
+                "   WHERE DONORDONATION.SSN = DONOR.SSN AND DONOR.SSN IN" +
+                "                                           ((SELECT SSN" +
+                "                                             FROM DONOR)" +
+                "                                            INTERSECT" +
+                "                                            (SELECT SSN" +
+                "                                             FROM EMPLOYEE))" +
+                "   GROUP BY DONOR.SSN, DONOR.ANONYMOUS) q1" +
+                "  INNER JOIN" +
+                "  (SELECT" +
+                "     SSN," +
+                "     NAME" +
+                "   FROM PERSON" +
+                "   WHERE SSN IN (" +
+                "     (SELECT SSN" +
+                "      FROM DONOR)" +
+                "     INTERSECT" +
+                "     (SELECT SSN" +
+                "      FROM EMPLOYEE))) q2 " +
+                "    ON q1.SSN = q1.SSN " +
+                "ORDER BY A DESC";
+        try {
+            stmt = dbc.prepareStatement(query);
+            ResultSet res = stmt.executeQuery();
+            System.out.println("--------------------------------------------------------");
+            System.out.format("| %-20s | %-16s | %-10s | %n", "Donor Name", "Total Donations", "Anonymous");
+            System.out.println("--------------------------------------------------------");
+            while(res.next()) {
+                String name = res.getString("NAME");
+                float amount = res.getFloat("A");
+                String anon = res.getString("ANONYMOUS");
+                System.out.format("| %-20s | %-16.2f | %-10s | %n", name, amount, anon);
+            }
+            System.out.println("--------------------------------------------------------");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void getMostHourVolunteer(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        String query =
+                "WITH CTE1 AS ( " +
+                        "    SELECT q1.SSN, " +
+                        "      q2.NAME " +
+                        "    FROM " +
+                        "      (SELECT" +
+                        "         SSN," +
+                        "         SUM(HOURS) AS G" +
+                        "       FROM VOLUNTEERHOURS" +
+                        "       GROUP BY SSN) q1" +
+                        "      INNER JOIN" +
+                        "      (SELECT" +
+                        "         NAME," +
+                        "         MAX(H) AS F" +
+                        "       FROM" +
+                        "         (SELECT" +
+                        "            NAME," +
+                        "            SSN," +
+                        "            SUM(HOURS) AS H" +
+                        "          FROM VOLUNTEERHOURS" +
+                        "          GROUP BY NAME, SSN" +
+                        "         )" +
+                        "       GROUP BY NAME) q2" +
+                        "        ON q1.G = q2.F) " +
+                        "SELECT" +
+                        "  q3.TNAME," +
+                        "  q3.NAME," +
+                        "  q4.MAILING_ADDR," +
+                        "  q4.EMAIL_ADDR," +
+                        "  q4.HOME_NUM," +
+                        "  q4.WORK_NUM," +
+                        "  q4.CELL_NUM " +
+                        "FROM" +
+                        "  (SELECT" +
+                        "     PERSON.SSN," +
+                        "     PERSON.NAME," +
+                        "     CTE1.NAME AS TNAME" +
+                        "   FROM PERSON" +
+                        "     INNER JOIN CTE1" +
+                        "       ON PERSON.SSN = CTE1.SSN) q3" +
+                        "  INNER JOIN" +
+                        "  (SELECT" +
+                        "     CONTACTINFO.SSN," +
+                        "     MAILING_ADDR," +
+                        "     EMAIL_ADDR," +
+                        "     HOME_NUM," +
+                        "     WORK_NUM," +
+                        "     CELL_NUM" +
+                        "   FROM CONTACTINFO" +
+                        "     INNER JOIN CTE1" +
+                        "       ON CONTACTINFO.SSN = CTE1.SSN) q4" +
+                        "    ON q3.SSN = q4.SSN";
+        try {
+            stmt = dbc.prepareStatement(query);
+            ResultSet res = stmt.executeQuery();
+            while(res.next()) {
+                String tname = res.getString("TNAME");
+                String name = res.getString("NAME");
+                String mail = res.getString("MAILING_ADDR");
+                String email = res.getString("EMAIL_ADDR");
+                String home = res.getString("HOME_NUM");
+                String work = res.getString("WORK_NUM");
+                String cell = res.getString("CELL_NUM");
+                System.out.println("Team: " + tname);
+                System.out.println("Name: " + name);
+                System.out.println("Mailing Address: " + mail);
+                System.out.println("Email Address: " + email);
+                System.out.println("Home: " + home);
+                System.out.println("Work: " + work);
+                System.out.println("Cell: " + cell);
+                System.out.println();
+            }
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void increaseSalary(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        String query =
+                "UPDATE EMPLOYEE " +
+                "SET SALARY = SALARY * 1.1 " +
+                "WHERE SSN IN ( " +
+                "  SELECT SSN " +
+                "  FROM ( " +
+                "    SELECT " +
+                "      SSN, " +
+                "      COUNT(SSN) AS C " +
+                "    FROM REPORTSTO " +
+                "    GROUP BY SSN) " +
+                "  WHERE C > 1)";
+        try {
+            stmt = dbc.prepareStatement(query);
+            stmt.executeUpdate();
+            System.out.println("Salaries updated.");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void deleteSomeClients(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+        String query =
+                "DELETE FROM CLIENT\n" +
+                "WHERE SSN IN (\n" +
+                "  SELECT SSN\n" +
+                "  FROM CLIENTNEED\n" +
+                "  WHERE name = 'transportation' AND importance < 5)";
+        try {
+            stmt = dbc.prepareStatement(query);
+            stmt.executeUpdate();
+            System.out.println("Specified clients deleted.");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void importTeams(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the name of the file to import from (file.csv): ");
+        String filename = scanner.nextLine();
+        String line;
+        try {
+            FileReader fr = new FileReader(filename);
+            BufferedReader br = new BufferedReader(fr);
+            while((line = br.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (FileNotFoundException e) {
+            fail(scanner, "Unable to open file " + filename);
+            return;
+        } catch (IOException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
     public static void printInstructions() {
-        System.out.println("WELCOME TO THE PAN CLIENT AND DONOR DATABASE SYSTEM");
+        System.out.println("Choose a command by entering the number of the command:");
         System.out.println();
         System.out.println("(1) Enter a new team");
         System.out.println("(2) Enter a new client and assign team(s)");
@@ -822,5 +1134,7 @@ public class Main {
         System.out.println("(17) Delete all clients who do not have health insurance and whose value of importance for transportation is less than 5");
         System.out.println("(18) Import teams from external csv");
         System.out.println("(19) Export mailing list to csv");
+        System.out.println("(20) Quit");
     }
+
 }
