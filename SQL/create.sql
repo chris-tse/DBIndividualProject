@@ -4,7 +4,6 @@ DROP INDEX CaresForSSNIndex;
 DROP INDEX ServesOnNameIndex;
 DROP INDEX ReportSSNIndex;
 DROP INDEX ONameIndex;
-DROP INDEX CNameIndex;
 DROP INDEX ExpenseDateIndex;
 DROP TABLE TeamLeader;
 DROP TABLE TeamReport;
@@ -169,7 +168,7 @@ ORGANIZATION HEAP;
 CREATE TABLE ContactInfo (
   SSN             VARCHAR(9),
   mailing_addr    VARCHAR(50),
-  email_addr      VARCHAR(50),
+  email_addr      VARCHAR(30),
   home_num        VARCHAR(15),
   work_num        VARCHAR(15),
   cell_num        VARCHAR(15),
