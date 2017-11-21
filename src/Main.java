@@ -1,10 +1,7 @@
 import oracle.jdbc.proxy.annotation.Pre;
 
 import javax.xml.transform.Result;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.sql.*;
 import java.util.Scanner;
 import java.util.SortedMap;
@@ -89,7 +86,7 @@ public class Main {
                     importTeams(dbc);
                     break;
                 case 19:
-//                    exportMailingList(dbc);
+                    exportMailingList(dbc);
                     break;
                 case 20:
                     System.out.println();
@@ -758,9 +755,11 @@ public class Main {
             stmt.setString(1, SSN);
             ResultSet res = stmt.executeQuery();
             res.next();
+            System.out.println("-------------------------------------------");
             System.out.format("|%-20s|%-20s| %n", "Doctor Name", "Doctor Phone");
             System.out.println("-------------------------------------------");
             System.out.format("|%-20s|%-20s| %n", res.getString("DOCTOR_NAME"), res.getString("DOCTOR_PHONE"));
+            System.out.println("-------------------------------------------");
             System.out.println("Press enter to continue...");
             scanner.nextLine();
         } catch (SQLException e) {
@@ -797,7 +796,7 @@ public class Main {
             while(res.next()) {
                 String SSN = res.getString("SSN");
                 float exp = res.getFloat("EXP");
-                System.out.format("| %-20s| %-16f| %n", SSN, exp);
+                System.out.format("| %-20s| %-16.2f| %n", SSN, exp);
             }
             System.out.println("-----------------------------------------");
             System.out.println("Press enter to continue...");
@@ -1096,17 +1095,67 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Enter the name of the file to import from (file.csv): ");
         String filename = scanner.nextLine();
+        String insertTeam = "INSERT INTO TEAM VALUES (?, ?, to_date(?, 'YYYY/MM/DD'))";
         String line;
+        PreparedStatement stmt;
         try {
             FileReader fr = new FileReader(filename);
             BufferedReader br = new BufferedReader(fr);
+            int num = 0;
             while((line = br.readLine()) != null) {
-                System.out.println(line);
+                String[] values = line.split(",");
+                stmt = dbc.prepareStatement(insertTeam);
+                stmt.setString(1, values[0]);
+                stmt.setString(2, values[1]);
+                stmt.setString(3, values[2]);
+                int res = stmt.executeUpdate();
+                if (res > 0) num++;
             }
+            System.out.println("Inserting from file complete. " + num + " teams inserted.");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
         } catch (FileNotFoundException e) {
             fail(scanner, "Unable to open file " + filename);
             return;
         } catch (IOException e) {
+            fail(scanner, e.getMessage());
+            return;
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+    }
+
+    public static void exportMailingList(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter the name of the output file (output.csv): ");
+        String filename = scanner.nextLine();
+        String query =
+                "SELECT " +
+                "  PERSON.NAME, " +
+                "  CONTACTINFO.MAILING_ADDR " +
+                "FROM PERSON " +
+                "INNER JOIN CONTACTINFO " +
+                "ON PERSON.SSN = CONTACTINFO.SSN " +
+                "WHERE ON_MAILING_LIST = 'Y' ";
+        PreparedStatement stmt;
+        try {
+            FileWriter fw = new FileWriter(filename);
+            BufferedWriter bw = new BufferedWriter(fw);
+            stmt = dbc.prepareStatement(query);
+            ResultSet res = stmt.executeQuery();
+            while(res.next()) {
+                bw.write(res.getString("NAME") + "," + res.getString("MAILING_ADDR"));
+                bw.newLine();
+            }
+            bw.close();
+            System.out.println("Finished writing to file " + filename + " .");
+            System.out.println("Press enter to continue...");
+            scanner.nextLine();
+        } catch (IOException e) {
+            fail(scanner, e.getMessage());
+            return;
+        } catch (SQLException e) {
             fail(scanner, e.getMessage());
             return;
         }
