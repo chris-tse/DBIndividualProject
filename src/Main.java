@@ -53,7 +53,7 @@ public class Main {
                     insertDonor(dbc);
                     break;
                 case 9:
-//                    insertDonorOrg(dbc);
+                    insertDonorOrg(dbc);
                     break;
                 case 10:
                     getClientDoctor(dbc);
@@ -199,7 +199,6 @@ public class Main {
         } catch (SQLException e) {
             fail(scanner, e.getMessage());
         }
-        scanner.close();
     }
 
     public static void insertClient(Connection dbc) {
@@ -253,7 +252,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void insertVolunteer(Connection dbc) {
@@ -300,7 +298,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void recordVolunteerHours(Connection dbc) {
@@ -328,7 +325,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void insertEmployee(Connection dbc) {
@@ -379,7 +375,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void recordExpense(Connection dbc) {
@@ -411,7 +406,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void insertSponsor(Connection dbc) {
@@ -502,7 +496,6 @@ public class Main {
             fail(scanner, e.getMessage());
             return;
         }
-        scanner.close();
     }
 
     public static void insertDonor(Connection dbc) {
@@ -535,6 +528,9 @@ public class Main {
         scanner.nextLine();
 
         String insertDonation = "INSERT INTO DONORDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?)";
+        String insertDonorCheck = "INSERT INTO DONORCHECKDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?)";
+        String insertDonorCard = "INSERT INTO DONORCARDDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?, to_date(?, 'YYYY/MM/DD'))";
+
         for (int i = 0; i < n; i++) {
             System.out.print("Enter the date of the donation (YYYY/MM/DD): ");
             String ddate = scanner.nextLine();
@@ -557,8 +553,7 @@ public class Main {
             }
             System.out.print("Enter whether it was by check or card (check/card): ");
             String dtype = scanner.nextLine();
-            String insertDonorCheck = "INSERT INTO DONORCHECKDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?)";
-            String insertDonorCard = "INSERT INTO DONORCARDDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?, to_date(?, 'YYYY/MM/DD'))";
+
             if (dtype.equals("check")) {
                 System.out.print("Enter the check number: ");
                 String check_num = scanner.nextLine();
@@ -599,7 +594,148 @@ public class Main {
         }
         System.out.println("Donor and donation insertions complete. Press enter to continue...");
         scanner.nextLine();
-        scanner.close();
+    }
+
+    public static void insertDonorOrg(Connection dbc) {
+        Scanner scanner = new Scanner(System.in);
+        PreparedStatement stmt;
+
+        String insertOrg = "INSERT INTO ORG VALUES (?, ?, ?, ?, ?)";
+        String insertChurch = "INSERT INTO CHURCH VALUES (?, ?)";
+        String insertBusiness = "INSERT INTO BUSINESS VALUES (?, ?, ?, ?)";
+        System.out.print("Enter the name of the donor organization: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter the address of the donor organization: ");
+        String addr = scanner.nextLine();
+        System.out.print("Enter the phone of the donor organization: ");
+        String phone = scanner.nextLine();
+        System.out.print("Enter the name of the contact person of the donor organization: ");
+        String contact = scanner.nextLine();
+        System.out.print("Does this donor organization wish to be anonymous? (T/F): ");
+        String anon = scanner.nextLine();
+        System.out.print("Is this organization a [C]hurch, [B]usiness, or [N]either? (C/B/N): ");
+        String type = scanner.nextLine();
+        try {
+            stmt = dbc.prepareStatement(insertOrg);
+            stmt.setString(1, name);
+            stmt.setString(2, addr);
+            stmt.setString(3, phone);
+            stmt.setString(4, contact);
+            stmt.setString(5, anon);
+            stmt.executeUpdate();
+            System.out.println("Inserted into Org");
+        } catch (SQLException e) {
+            fail(scanner, e.getMessage());
+            return;
+        }
+        if (type.equals("C")) {
+            System.out.print("Enter the affiliation of the church: ");
+            String affil = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertChurch);
+                stmt.setString(1, name);
+                stmt.setString(2, affil);
+                stmt.executeUpdate();
+                System.out.println("Inserted into Church");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+        }
+
+        if (type.equals("B")) {
+            System.out.print("Enter the type of business: ");
+            String btype = scanner.nextLine();
+            System.out.print("Enter the number of employees at this company: ");
+            int bsize = scanner.nextInt();
+            scanner.nextLine();
+            System.out.print("Enter the website of the business: ");
+            String site = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertBusiness);
+                stmt.setString(1, name);
+                stmt.setString(2, btype);
+                stmt.setInt(3, bsize);
+                stmt.setString(4, site);
+                stmt.executeUpdate();
+                System.out.println("Inserted into Business");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+        }
+
+        System.out.print("How many donations to insert for " + name + "?");
+        int n = scanner.nextInt();
+        scanner.nextLine();
+
+        String insertOrgDonation = "INSERT INTO ORGDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?)";
+        String insertOrgCheck = "INSERT INTO DONORCHECKDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?)";
+        String insertOrgCard = "INSERT INTO DONORCARDDONATION VALUES (?, to_date(?, 'YYYY/MM/DD'), ?, ?, to_date(?, 'YYYY/MM/DD'))";
+
+        for (int i = 0; i < n; i++) {
+            System.out.print("Enter the date of the donation (YYYY/MM/DD): ");
+            String ddate = scanner.nextLine();
+            System.out.print("Enter the amount of the donation: ");
+            float amount = scanner.nextFloat();
+            scanner.nextLine();
+            System.out.print("Enter the campaign of the donation: ");
+            String camp = scanner.nextLine();
+            try {
+                stmt = dbc.prepareStatement(insertOrgDonation);
+                stmt.setString(1, name);
+                stmt.setString(2, ddate);
+                stmt.setFloat(3, amount);
+                stmt.setString(4, camp);
+                stmt.executeUpdate();
+                System.out.println("Inserted to OrgDonation");
+            } catch (SQLException e) {
+                fail(scanner, e.getMessage());
+                return;
+            }
+
+            System.out.print("Enter whether it was by check or card (check/card): ");
+            String dtype = scanner.nextLine();
+            if (dtype.equals("check")) {
+                System.out.print("Enter the check number: ");
+                String check_num = scanner.nextLine();
+                try {
+                    stmt = dbc.prepareStatement(insertOrgCheck);
+                    stmt.setString(1, name);
+                    stmt.setString(2, ddate);
+                    stmt.setString(3, check_num);
+                    stmt.executeUpdate();
+                    System.out.println("Inserted to OrgCheckDonation");
+                } catch (SQLException e) {
+                    fail(scanner, e.getMessage());
+                    return;
+                }
+            }
+            if (dtype.equals("card")) {
+                System.out.print("Enter the card number: ");
+                String card_num = scanner.nextLine();
+                System.out.print("Enter the card type: ");
+                String card_type = scanner.nextLine();
+                System.out.print("Enter the card expiry date: ");
+                String card_exp = scanner.nextLine();
+                try {
+                    stmt = dbc.prepareStatement(insertOrgCard);
+                    stmt.setString(1, name);
+                    stmt.setString(2, ddate);
+                    stmt.setString(3, card_num);
+                    stmt.setString(4, card_type);
+                    stmt.setString(5, card_exp);
+                    stmt.executeUpdate();
+                    System.out.println("Inserted to OrgCardDonation");
+                } catch (SQLException e) {
+                    fail(scanner, e.getMessage());
+                    return;
+                }
+            }
+        }
+
+        System.out.println("Organization and donation insertions complete. Press enter to continue...");
+        scanner.nextLine();
     }
 
     public static void getClientDoctor(Connection dbc) {
